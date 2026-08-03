@@ -1,6 +1,6 @@
-FROM php:8.2-fpm-alpine
+FROM php:8.4-fpm-alpine
 
-# Install production system dependencies and PHP extensions
+# 1. Install system utilities and core PHP extensions
 RUN apk add --no-cache \
     nginx \
     supervisor \
@@ -10,25 +10,27 @@ RUN apk add --no-cache \
     libzip-dev \
     zip \
     unzip \
-    && docker-php-ext-install pdo pdo_pgsql bcmath gd zip
+    icu-dev \
+    && docker-php-ext-configure intl \
+    && docker-php-ext-install pdo pdo_pgsql bcmath gd zip intl exif
 
-# Set working directory
+# 2. Sync working directory
 WORKDIR /var/www/html
 COPY . .
 
-# Install Composer packages
+# 3. Pull secure packages matching PHP 8.4
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Setup permissions
+# 4. Apply folder permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Generate Nginx configuration dynamically inline
+# 5. Inject Nginx configuration inline
 RUN echo 'server { \
     listen 80; \
     root /var/www/html/public; \
     index index.php index.html; \
-    choice_log off; \
+    access_log off; \
     location / { \
         try_files $uri $uri/ /index.php?$query_string; \
     } \
@@ -43,7 +45,7 @@ RUN echo 'server { \
     } \
 }' > /etc/nginx/http.d/default.conf
 
-# Generate Supervisor configuration dynamically inline
+# 6. Inject Supervisor management parameters inline
 RUN mkdir -p /var/log/supervisor
 RUN echo '[supervisord] \n\
 nodaemon=true \n\
@@ -65,5 +67,5 @@ stderr_logfile_maxbytes=0' > /etc/supervisor/conf.d/supervisord.conf
 
 EXPOSE 80
 
-# Run the installation and start supervisor
-CMD ["/bin/sh", "-c", "php artisan filament-saas:install --no-interaction && /usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# 7. Safe runtime script that waits for your Render settings to be configured
+CMD ["/bin/sh", "-c", "if [ -z \"$APP_KEY\" ]; then echo 'Waiting for Render environment variables...'; sleep 10; exit 1; fi && php artisan filament-saas:install --no-interaction && /usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
