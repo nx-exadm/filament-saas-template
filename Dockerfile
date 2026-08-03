@@ -67,5 +67,5 @@ stderr_logfile_maxbytes=0' > /etc/supervisor/conf.d/supervisord.conf
 
 EXPOSE 80
 
-# 7. Safe runtime script that waits for your Render settings to be configured
-CMD ["/bin/sh", "-c", "if [ -z \"$APP_KEY\" ]; then echo 'Waiting for Render environment variables...'; sleep 10; exit 1; fi && php artisan filament-saas:install --no-interaction && /usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# 7. Safe runtime script that runs the SaaS install with the minimal non-interactive flag
+CMD ["/bin/sh", "-c", "if [ -z \"$APP_KEY\" ]; then echo 'Waiting for Render environment variables...'; sleep 10; exit 1; fi && php artisan filament-saas:install --no-interaction --minimal && /usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
