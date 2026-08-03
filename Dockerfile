@@ -45,8 +45,8 @@ RUN echo 'server { \
     } \
 }' > /etc/nginx/http.d/default.conf
 
-# 6. Inject Supervisor management parameters inline
-RUN mkdir -p /var/log/supervisor
+# 6. Create log and configuration paths and inject Supervisor parameters
+RUN mkdir -p /var/log/supervisor /etc/supervisor/conf.d
 RUN echo '[supervisord] \n\
 nodaemon=true \n\
 user=root \n\
