@@ -1,18 +1,13 @@
 FROM node:20-alpine AS assets
-
 WORKDIR /var/www/html
-
 # Install JS deps and build the Vite assets Filament needs at render time.
 # Copying package*.json first lets Docker cache this layer when only PHP changes.
 COPY package.json package-lock.json* ./
-RUN npm ci
-
+RUN npm ci --include=dev
 COPY . .
 RUN npm run build
 
-
 FROM php:8.4-fpm-alpine
-
 # 1. Install system utilities and core PHP extensions
 RUN apk add --no-cache \
     nginx \
@@ -48,11 +43,9 @@ server {
     root /var/www/html/public;
     index index.php index.html;
     access_log off;
-
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
-
     location ~ \.php$ {
         try_files $uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
@@ -73,24 +66,19 @@ nodaemon=true
 user=root
 logfile=/var/log/supervisor/supervisord.log
 pidfile=/tmp/supervisord.pid
-
 [unix_http_server]
 file=/tmp/supervisor.sock
 chmod=0700
-
 [rpcinterface:supervisor]
 supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
-
 [supervisorctl]
 serverurl=unix:///tmp/supervisor.sock
-
 [program:php-fpm]
 command=php-fpm
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
-
 [program:nginx]
 command=nginx -g "daemon off;"
 stdout_logfile=/dev/stdout
