@@ -45,17 +45,20 @@ RUN echo 'server { \
     } \
 }' > /etc/nginx/http.d/default.conf
 
-# 6. Create log paths and inject complete, multi-service Supervisor components inline
+# 6. Create logs and inject complete Supervisor infrastructure using fully writeable /tmp/ directories
 RUN mkdir -p /var/log/supervisor /etc/supervisor/conf.d
 RUN echo '[supervisord] \n\
 nodaemon=true \n\
 user=root \n\
 logfile=/var/log/supervisor/supervisord.log \n\
-pidfile=/run/supervisord.pid \n\
+pidfile=/tmp/supervisord.pid \n\
+[unix_http_server] \n\
+file=/tmp/supervisor.sock \n\
+chmod=0700 \n\
 [rpcinterface:supervisor] \n\
 supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface \n\
 [supervisorctl] \n\
-serverurl=unix:///run/supervisor.sock \n\
+serverurl=unix:///tmp/supervisor.sock \n\
 [program:php-fpm] \n\
 command=php-fpm \n\
 stdout_logfile=/dev/stdout \n\
