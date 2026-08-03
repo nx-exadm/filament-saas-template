@@ -1,7 +1,18 @@
 FROM node:20-alpine AS assets
 WORKDIR /var/www/html
-# Install JS deps and build the Vite assets Filament needs at render time.
-# Copying package*.json first lets Docker cache this layer when only PHP changes.
+
+# Composer needs PHP to run — install both here so we can generate vendor/
+# before Vite tries to resolve Filament's theme.css from it.
+RUN apk add --no-cache php php-phar php-mbstring php-xml php-curl php-openssl
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Install PHP deps first (Filament's package lives here) — the assets build
+# needs vendor/filament/filament/resources/css/theme.css to resolve.
+COPY composer.json composer.lock* ./
+RUN composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader --no-interaction
+
+# Now install JS deps and build. Copying package*.json first lets Docker
+# cache this layer when only PHP changes.
 COPY package.json package-lock.json* ./
 RUN npm ci --include=dev
 COPY . .
