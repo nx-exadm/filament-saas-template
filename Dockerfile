@@ -8,8 +8,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Install PHP deps first (Filament's package lives here) — the assets build
 # needs vendor/filament/filament/resources/css/theme.css to resolve.
+# --ignore-platform-reqs: this stage never executes PHP code, it only needs
+# the package files on disk, so extension checks (intl, dom, session, etc.)
+# don't apply here and are safe to skip.
 COPY composer.json composer.lock* ./
-RUN composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader --no-interaction
+RUN composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader --no-interaction --ignore-platform-reqs
 
 # Now install JS deps and build. Copying package*.json first lets Docker
 # cache this layer when only PHP changes.
