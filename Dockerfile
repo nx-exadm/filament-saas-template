@@ -1,3 +1,16 @@
+FROM node:20-alpine AS assets
+
+WORKDIR /var/www/html
+
+# Install JS deps and build the Vite assets Filament needs at render time.
+# Copying package*.json first lets Docker cache this layer when only PHP changes.
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+
 FROM php:8.4-fpm-alpine
 
 # 1. Install system utilities and core PHP extensions
@@ -21,6 +34,9 @@ COPY . .
 # 3. Pull secure packages matching PHP 8.4
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction
+
+# 3b. Bring in the compiled frontend assets from the Node build stage
+COPY --from=assets /var/www/html/public/build /var/www/html/public/build
 
 # 4. Apply folder permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
